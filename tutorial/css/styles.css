@@ -1,0 +1,101 @@
+* {
+	font-family: 'Merriweather', serif;
+}
+header {
+	padding-top: 5%;
+	padding-bottom: 5%;
+	background-color: #339999;
+	color: #ffffff;
+	text-align: center;
+	margin-bottom: 48px;
+}
+
+.wrapper {
+	max-width: 48em;
+	margin-right: auto;
+	margin-left: auto;
+	padding-right: 24px;
+	padding-left: 24px;
+}
+	li {
+		list-style: square;
+	}
+		li a {
+			text-decoration: none;
+			color: #339999;
+		}
+	a {
+		text-decoration: none;
+		color: #339999;
+	}
+.codewrap {
+	background-color: #292727;
+	width: auto;
+	margin: 0;
+	line-height: 125%;
+	overflow: auto;
+	color: #ffffff;
+	padding: 2em 6em;
+}
+	.var, .function, .object, .property, .value {
+		color: #0da1d8;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.operator {
+		color: #d8278b;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.parameter, .font {
+		color: #fef07f;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.num {
+		color: #9723a8;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.comment {
+		color: #595858;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.element {
+		color: #d8278b;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.class, .id, .attr {
+		color: #9CFA19;
+		font-family: monospace, monospace;
+		font-size: 1em;
+	}
+	.chat {
+		width: 700px;
+		height: 467px;
+	}
+
+section img{
+	border: 2px solid lightgrey;
+}
+
+
+footer {
+	width: 100%;
+	padding-top: 1%;
+	padding-bottom: 1%;
+	background-color: #339999;
+	color: #ffffff;
+	text-align: center;
+}
+/*.navicon {
+	float: right;
+	height: 6px;
+	width: 34px;
+	margin: 20px;
+	border-top: 18px double #000;
+	border-bottom: 6px solid #000;
+	font-size: 0;
+}*/

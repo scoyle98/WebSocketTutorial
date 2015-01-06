@@ -1,4 +1,8 @@
+//use this code for testing locally
 var client = new WebSocket("ws://localhost:2000");
+
+//use this code when you're ready to host online
+//var client = new WebSocket("ws://[your-url]:3000");
 
 var message = document.getElementById("input");
 var namebox = document.getElementById("namebox");

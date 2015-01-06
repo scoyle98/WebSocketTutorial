@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Building a chat app with WebSockets</title>
+		<link rel="stylesheet" type="text/css" href="css/styles.css">
+		<link rel="stylesheet" type="text/css" href="css/normalize.css">
+		<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Titillium+Web:200%7CMerriweather:300italic,300,700,700italic">
+	</head>
+	<body>
+		<header>
+			<h1>Chat App Guidelines</h1>
+		</header>
+		<div class="wrapper">
+			<section>
+				<h2>Contents</h2>
+				<ul>
+					<li><a href="#">Introduction</a></li>
+					<li><a href="#">Creating a GitHub Repository</a></li>
+					<li><a href="#">Installing Your Packages</a></li>
+					<li><a href="#">Server-Side Code</a></li>
+					<li><a href="#">Client-Side Code</a></li>
+					<li><a href="#">Styling</a></li>
+					<li><a href="#">Testing Locally</a></li>
+					<li><a href="#">Hosting on Digital Ocean</a></li>
+					<li><a href="#">Glossary</a></li>
+				</ul>
+			</section>
+			
+  
+				<h2>Introduction</h2>
+				<p>Hey you crazy kids! Here you'll find a tutorial on building and hosting a web-based chat app using WebSockets/Node.js. This guide assumes a basic knowledge of HTML, CSS and JavaScript.</p>
+  <p>What are WebSockets, you ask? In a nutshell, WebSockets allow for an open and persistent connection between a server and a client, so that clients can distribute data to one another -- like chat messages -- in near real-time, without their browsers refreshing. Check out this <a href="http://blog.teamtreehouse.com/an-introduction-to-websockets">Treehouse article</a> for more details.</p>
+  <p>The chat app we'll be building in this tutorial offers a simple example of the power of this technology in action.</p>
+			</section>
+			
+        <section>
+        <h2>Creating a Github Repository</h2>
+        <p>The first thing we need to do is create a Github repository where we'll save our code. Refer to <a href="https://help.github.com/articles/create-a-repo/">the instructions here</a> on how to do that.
+      </section>
+
+      <section>
+  <h2>Installing Packages</h2>
+  
+
+  <h3>http-server</h3>
+  <p>Here a link the the npm page for http server package</p>
+  <a href="https://www.npmjs.com/package/http-server">http-server</a>
+  <p>To build this app, we're going to use a couple of packages from 
+    NPM, a package manager for JavaScript.  First, let's install the 
+    "http-server" package from the terminal. This package will allow us
+    to view the chat app in a web browser.</p>
+
+  <h3>ws</h3>
+  <p>Here a link the the npm page for ws server package</p>
+  <a href="https://www.npmjs.com/package/ws">ws server</a>
+  <p>We also need the "ws" package, which lets us make use of
+   WebSockets. </p>
+
+    <pre class="codewrap"><code>npm install -g ws</code></pre>
+    <pre class="codewrap"><code>npm install -g http-server</code></pre>
+
+   <p>After you've installed these two packages globally, we need to navigate in the terminal to the folder in which we're building our app. From here, we'll enter a couple of commands to make sure the programs in this folder can make use of the packages we've just installed.</p>
+
+    <pre class="codewrap"><code>
+      npm init
+    </code></pre>
+
+    <pre class="codewrap"><code>
+      npm install --save ws
+    </code></pre>
+
+    <pre class="codewrap"><code>
+      npm init
+    </code></pre>
+
+    <pre class="codewrap"><code>
+      npm install --save http-server
+    </code></pre>
+
+  </section>
+
+      <section>
+				<h2>Server-Side Code</h2>
+<p>Now you're ready to write the code for your server. Excited? Me too.</p>
+  <p>We're writing our code in JavaScript and running it using Node.js, a platform for networking applications written in JavaScript. You can read more about Node.js <a href="http://nodejs.org/">here</a>.
+  <br>
+  <p>Because we're using web sockets, the first thing we need to do is tell the computer that we'll be using the web sockets package we installed earlier. We can do that by defining a server that makes use of the "ws" package.</p>
+  <pre class="codewrap"><code><span class="var">var</span> WebSocketServer <span class="operator">=</span> require(<span class="parameter">"ws"</span>).Server;</code></pre>
+  <p>Next, we need to choose a port through which users of your chat app will connect to the server. In this case, we'll use port 2000.</p>
+<pre class="codewrap"><code><span class="var">var</span> server <span class="operator">= new</span> WebSocketServer({port: <span class="num">2000</span>});</code></pre>
+<p>We're going to want to keep track of all the users connected to the chat app, so we'll create an array called "clients" -- that's the technical name for the users connecting to your server. For now, this array will be empty, but that will change when users start connecting.</p>
+<pre class="codewrap"><code><span class="var">var</span> clients <span class="operator">=</span> [];</code></pre>
+<p>We'll use console.log to print a message in the terminal window that will let us know when the server is up and running. 
+<pre class="codewrap"><code>console.<span class="object">log</span>(<span class="parameter">"listening on port 2000"</span>);</code></pre>
+<p>Now we need to tell the server what to do when a client connects. We're going to use an event listener -- in fact, all the rest of your server code will be contained in this one big listener.</p>
+<p>When a new connection occurs, we'll start by having the program print a message in the console and add that client to the list of users in the (previously empty) array we just created.</p>
+<pre class="codewrap"><code>
+server.on(<span class="parameter">"connection"</span>, <span class="function">function</span>(connection) {
+ <span class="comment">//lets server know a client has connected</span>
+  console.<span class="object">log</span>(<span class="parameter">"Client connected!"</span>);
+   <span class="comment">//adds user to the list of people connected</span>
+  clients.<span class="function">push</span>(connection);
+</code></pre>
+<p>Next, we need to nest a new event listener within the larger listener to deal with incoming messages. When one of the clients sends a chat message to the server, it will come in encoded with JSON. That means we need to use JSON.parse to decode the message. We'll take the user name of the sender and the text of the message to create a new string that we'll print to the console and send individually to each client in the client array.</p>
+<pre class="codewrap"><code>
+connection.on(<span class="parameter">"message"</span>, <span class="function">function</span>(message){
+    <span class="var">var</span> msg <span class="operator">=</span> JSON.<span class="function">parse</span>(message);
+    <span class="comment">//de-JSON client message</span>
+    <span class="var">var</span> msg_decoded <span class="operator">=</span> (msg.name <span class="operator">+</span> ": " <span class="operator">+</span> msg.words); 
+    console.<span class="object">log</span>(msg_decoded);
+    clients.forEach(<span class="function">function</span>(client){
+    <span class="comment">//send client message to all users in chat</span>
+        client.<span class="function">send</span>(msg_decoded); 
+      }); 
+  });
+</code></pre>
+<p>We also need to tell the program what to do when a user disconnects. For that we'll nest another event listener. This listener will figure out which user disconnected and then remove that user from the clients array before printing the remaining number of connections to the console.</p>
+<pre class="codewrap"><code>
+connection.on(<span class="parameter">"close"</span>, <span class="function">function</span> (){
+    <span class="var">var</span> x <span class="operator">=</span> clients.<span class="function">indexOf</span>(connection);
+    <span class="comment">//when user disconnects, removes user from user list</span>
+    clients.<span class="function">splice</span>(x, <span class="num">1</span>);  
+    <span class="comment">//prints the # of users in chatroom</span>
+    console.<span class="object">log</span>(clients.<span class="function">length</span>); 
+  });
+</code></pre>
+<p>And that's it for the server. You can run this program in the Terminal window by navigating to its folder and typing "node [your file name].js" -- for example, "node server.js." You should see your console message -- "listening on port 2000" -- and a blinking cursor, which lets you know that the server is working and waiting for connections.</p>
+<p>Here's the completed program:</p>
+<pre class="codewrap"><code>
+<span class="var">var</span> WebSocketServer <span class="operator">=</span> require(<span class="parameter">"ws"</span>).Server;
+<span class="var">var</span> server <span class="operator">= new</span> WebSocketServer({port: <span class="num">2000</span>});
+<span class="var">var</span> clients <span class="operator">=</span> [];
+
+console.<span class="object">log</span>(<span class="parameter">"listening on port 2000"</span>);
+
+server.on(<span class="parameter">"connection"</span>, <span class="function">function</span>(connection) {
+<span class="comment">//lets server know a client has connected</span>
+  console.<span class="object">log</span>("Client connected!"); 
+  <span class="comment">//adds user to the list of people connected</span>
+  clients.<span class="function">push</span>(connection); 
+  connection.on("message", <span class="function">function</span>(message){
+    <span class="var">var</span> msg <span class="operator">=</span> JSON.<span class="function">parse</span>(message);
+    <span class="comment">//de-JSON client message</span> 
+    <span class="var">var</span> msg_decoded = (msg.name <span class="operator">+</span> ": " <span class="operator">+</span> msg.words); 
+    console.<span class="object">log</span>(msg_decoded);
+    clients.forEach(<span class="function">function</span>(client){
+    <span class="comment">//send client message to all users in chat</span>
+        client.<span class="function">send</span>(msg_decoded); 
+      });
+  });
+  connection.on(<span class="parameter">"close"</span>, <span class="function">function</span> (){
+    <span class="var">var</span> x <span class="operator">=</span> clients.<span class="function">indexOf</span>(connection);
+    <span class="comment">//when user disconnects, removes user from user list</span>
+    clients.<span class="function">splice</span>(x, <span class="num">1</span>);  
+    <span class="comment">//lets server know # of users in chatroom</span>
+    console.<span class="object">log</span>(clients.<span class="function">length</span>); 
+  });
+});
+</code></pre>
+		
+</section>
+<section>
+      <h3>Client</h3>
+  <p>Now, we're going to write client-side code that will interact with the server code we
+    just wrote.</p>
+  <p>See below the example client JavaScript code we will be going
+    through in this section. Also Included is the html code that this
+    client is referencing to</p>
+    <pre class="codewrap"><code>
+
+  <span class="comment">//use this definition of the client for testing locally</span>
+
+  <span class="var">var</span> client <span class="operator">= new</span> WebSocket(<span class="parameter">"ws://localhost:2000"</span>); 
+
+  <span class="comment">//var client = new WebSocket("ws://[your-url]:3000");</span>
+  <span class="comment">//use this definition when you're ready to host online</span>
+
+  <span class="var">var</span> message <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"input"</span>);
+  <span class="var">var</span> namebox <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"namebox"</span>);
+  <span class="var">var</span> button <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"button"</span>); 
+
+  button.addEventListener(<span class="parameter">"click"</span>, <span class="function">function</span>(){
+    <span class="var">var</span> msg <span class="operator">=</span> {name: namebox.<span class="function">value</span>}
+    msg["words"] <span class="operator">=</span> message.<span class="function">value</span>;
+    <span class="var">var</span> encoded_msg <span class="operator">=</span> JSON.stringify(msg);
+    client.<span class="function">send</span>(encoded_msg);
+    message.<span class="function">value</span> <span class="operator">=</span> <span class="parameter">""</span>;
+  }); 
+
+  client.addEventListener(<span class="parameter">"message"</span>, <span class="function">function</span>(message){
+    <span class="var">var</span> ul <span class="operator">=</span> <span class="object">document</span>.querySelector(<span class="parameter">"ul"</span>);
+    <span class="var">var</span> newLi <span class="operator">=</span> <span class="object">document</span>.<span class="function">createElement</span>(<span class="parameter">"li"</span>);
+    <span class="var">var</span> messageText <span class="operator">=</span> message.<span class="function">data</span>;
+    newLi.innerHTML <span class="operator">=</span> " &ltli&gt " <span class="operator">+</span> messageText <span class="operator">+</span> " &lt/li&gt ";
+    ul.<span class="function">appendChild</span>(newLi);
+  });
+      </code></pre>
+      <h3>Establishing Connection to the Server</h3>
+
+<p>First thing you must create your Web Socket client.
+  You must establish a client variable and a new WebSocket
+  connection. Here we are hosting it on a localhost, but
+  later when you want to host your chat app on the internet
+  you will have to change it to be hosted on your own site.</p>
+
+<p>You also have the ability to change what port number this is
+  hosted on. In this case it is hosted on port 2000 as you can
+  see at the end of this code. Make sure this number matches the
+  port number on your server code.</p>
+  <pre class="codewrap"><code>
+<span class="var">var</span> client <span class="operator">= new</span> WebSocket(<span class="parameter">"ws://localhost:2000"</span>);        
+      </code></pre>
+      <h3>Linking HTML Elements</h3>
+
+<p>In the code below we create links to the html elements from the
+  html file previously mentioned. This grabs the elembets by the id
+  using .getElementById, which grabs text existing elements by
+  their id in html file</p>
+
+<p>The elements that we are grabbing are two imput boxes, var message
+  is for the input box that messages are written in, and var namebox
+  is for the input box that the username is written in. The variable 
+  var button is the button that sends messages from the message input
+  box.</p>
+  <pre class="codewrap"><code> 
+      <span class="var">var</span> message <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"input"</span>);
+      <span class="var">var</span> namebox <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"namebox"</span>);
+      <span class="var">var</span> button <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"button"</span>);
+      </code></pre>
+      <h3>Sending a Message to the Server</h3>
+
+<p>The next section of code sends a message that the client types
+to the server, which then the server will send back to all clients.</p>
+
+<p>Line 1: <i>button.addEventListener("click", function(){</i>
+this calls the button that we previously declared, and adds an
+event listener to it on the click.</p>
+
+<p>Line 2: <i>var msg = {name: namebox.value}</i> is creating
+an object variable with a key of name and a value that gets the value
+from the namebox from the html file. This is assigning a username to
+a user</p>
+
+<p>Line 3: <i>msg["words"] = message.value;</i> This code take the same
+object variable <i>msg</i> and assigns a key of words and a value that takes
+the value of the message input box. This is creating a message from the message
+box</p>
+
+<p>Line 4: <i>var encoded_msg = JSON.stringify(msg);</i> This code creates
+a variable <i>var encoded_msg</i> that takes your newly created <i>msg</i>
+variable and calles <i>JSON.stringify(msg)</i> on it. This is essentially
+make the object msg into a sendible 'stringified' version of it to the server.
+The server will unwrap this stringified package back into an object.</p>
+
+<p>Line 5: <i>client.send(encoded_msg);</i> This code sends your to the server
+using <i>client.send</i></p>
+
+<p>Line 6: <i>message.value = "";</i> This resets the message imput 
+box to nothing after the message is set</p>
+<pre class="codewrap"><code>
+      button.addEventListener(<span class="parameter">"click"</span>, <span class="function">function</span>(){
+        <span class="var">var</span> msg <span class="operator">=</span> {name: namebox.<span class="function">value</span>} 
+        msg[<span class="parameter">"words"</span>] = message.<span class="function">value</span>;
+        <span class="var">var</span> encoded_msg <span class="operator">=</span> JSON.stringify(msg);
+        client.<span class="function">send</span>(encoded_msg); 
+        message.<span class="function">value</span> = <span class="parameter">""</span>;
+      });
+    </pre></code>
+    <h3>Receiving a message</h3>
+
+    <p>Line 1: <i>client.addEventListener("message", function(message){</i>
+      this established a message event listener. The parameter is the
+      incoming message.</p>
+
+    <p>Line 2: <i>var ul = document.querySelector("ul");</i> this selects
+      the ul element from the html file</p>
+
+    <p>Line 3: <i>var newLi = document.createElement("li");</i> this uses
+      <i>.createElement()</i> to create a variable that creates a new li</p>
+
+    <p>Line 4: <i>var messageText = message.data;</i> This declares a variable
+      that gets uses .data from message</p>
+    
+    <p>Line 5: <i>newLi.innerHTML = " &ltli&gt " + messageText + " &lt/li&gt ";</i>
+      This sets the newLi variable's inner text to the messageText surrounded by
+      li tags so it will render on the browser</p>
+
+    <p>Line 6:<i>ul.appendChild(newLi);</i> This line puts the newly created li into
+      the ul text area using .appendChild()</p>
+      <pre class="codewrap"><code>
+client.addEventListener(<span class="parameter">"message"</span>, <span class="function">function</span>(message){
+<span class="var">var</span> ul <span class="operator">=</span> <span class="object">document</span>.querySelector(<span class="parameter">"ul"</span>);
+<span class="var">var</span> newLi <span class="operator">=</span> <span class="object">document</span>.<span class="function">createElement</span>(<span class="parameter">"li"</span>);
+<span class="var">var</span> messageText <span class="operator">=</span> message.<span class="function">data</span>;
+newLi.innerHTML <span class="operator">=</span> " &ltli&gt " <span class="operator">+</span> messageText <span class="operator">+</span> " &lt/li&gt ";
+ul.<span class="function">appendChild</span>(newLi); 
+});
+      </code></pre>
+
+      <p>Here's a look at the completed client-side code:</p>
+				<pre class="codewrap"><code>
+<span class="var">var</span> client <span class="operator">= new</span> WebSocket(<span class="parameter">"ws://localhost:2000"</span>);
+
+client.addEventListener(<span class="parameter">"message"</span>, <span class="function">function</span>(message){
+  <span class="var">var</span> ul <span class="operator">=</span> <span class="object">document</span>.querySelector(<span class="parameter">"ul"</span>);
+  <span class="var">var</span> newLi <span class="operator">=</span> <span class="object">document</span>.<span class="function">createElement</span>(<span class="parameter">"li"</span>);
+  <span class="var">var</span> messageText <span class="operator">=</span> message.<span class="function">data</span>;
+  newLi.innerHTML <span class="operator">=</span> "&#60;li&#62;" + messageText + "&#60;/li&#62;";
+  ul.<span class="function">appendChild</span>(newLi);
+});
+
+<span class="var">var</span> message <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"input"</span>);
+<span class="var">var</span> namebox <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"namebox"</span>);
+<span class="var">var</span> button <span class="operator">=</span> <span class="object">document</span>.<span class="function">getElementById</span>(<span class="parameter">"button"</span>);
+
+button.addEventListener(<span class="parameter">"click"</span>, <span class="function">function</span>(){
+  <span class="var">var</span> msg <span class="operator">=</span> {name: namebox.<span class="function">value</span>}
+  msg[<span class="parameter">"words"</span>] <span class="operator">=</span> message.<span class="function">value</span>;
+  <span class="var">var</span> encoded_msg <span class="operator">=</span> JSON.stringify(msg);
+  client.<span class="function">send</span>(encoded_msg);
+  message.<span class="function">value</span> <span class="operator">=</span> <span class="parameter">""</span>;
+});
+				</code></pre>
+			</section>
+			<section>
+		<h2>Styling your chat app</h2>
+		<p>Remember our simple chat app we made that looked very
+    plain and boring?</p>
+    <img src="img/browser.png">
+
+    <p>Below we made some simple styling on the chat app. In
+    this section we made a simple styled chat app. We are going
+    to briefly go over what we did to style it.</p>
+
+  <h3>Styled Chat App</h3>
+  <img class="chat" src="img/chat.png">
+
+  <p>Here is the sample code we will be working from. The final
+    index.html file and the final styles.css file.</p>
+<h3>Base HTML Code</h3>
+
+  <p>Below is the HTML code we'll be using with the server- and client-side JavaScript. Take note of the id's of the elements below, as they'll be referenced in our JavaScript and CSS.</p>
+				<pre class="codewrap"><code>
+&#60;!DOCTYPE html&#62;
+  &#60;<span class="element">html</span>&#62; 
+    &#60;<span class="element">meta</span> <span class="parameter">charset="UTF-8"</span>&#62;
+    &#60;<span class="element">head</span>&#62;
+    &#60;<span class="element">title</span>&#62;Chat App&#60;/<span class="element">title</span>&#62;
+    &#60;<span class="element">link</span> <span class="attr">href</span>='http://fonts.googleapis.com/css?family=Roboto' 
+    <span class="attr">rel</span>='stylesheet'&#62;
+    &#60;<span class="element">link</span> <span class="attr">rel</span>="stylesheet" <span class="attr">href</span>="styles.css"&#62; 
+    &#60;/<span class="element">head</span>&#62; 
+
+  &#60;<span class="element">body</span>&#62; 
+    
+      &#60;<span class="element">h1</span>&#62;Welcome to the World's Greatest Chat App&#60;/<span class="element">h1</span>&#62;
+      
+    &#60;<span class="element">div</span> <span class="id">id</span>=<span class="parameter">"chatbox"</span>&#62;
+      &#60;<span class="element">ul</span>&#62; 
+      &#60;/<span class="element">ul</span>&#62; 
+    &#60;/<span class="element">div</span>&#62;
+
+    &#60;<span class="element">div</span> <span class="id">id</span>=<span class="parameter">"messageinput"</span>&#62;
+      &#60;<span class="element">p</span>&#62;Your message:&#60;/<span class="element">p</span>&#62;
+      &#60;<span class="element">input</span> <span class="attr">type</span>=<span class="parameter">"text"</span> <span class="id">id</span>=<span class="parameter">"input"</span>&#62;&#60;<span class="element">br</span>&#62;
+    &#60;/<span class="element">div</span>&#62;
+
+    &#60;<span class="element">button</span> <span class="attr">type</span>=<span class="parameter">"button"</span> <span class="id">id</span>=<span class="parameter">"button"</span>&#62;Send message&#60;/<span class="element">button</span>&#62;
+
+    &#60;<span class="element">div</span> <span class="id">id</span>=<span class="parameter">"nameinput"</span>&#62;
+      &#60;<span class="element">p</span>&#62;Your name:&#60;/<span class="element">p</span>&#62;
+      &#60;<span class="element">input</span> <span class="attr">type</span><span class="parameter">"text"</span> <span class="id">id</span>="namebox"&#62;
+    &#60;/<span class="element">div</span>&#62;
+
+    &#60;<span class="element">script</span> <span class="parameter">src="client.js"</span>&#62;&#60;/<span class="element">script</span>&#62;
+
+  &#60;/<span class="element">body</span>&#62;
+  &#60;/<span class="element">html</span>&#62;
+				</code></pre>
+				<h3>CSS Code</h3>
+	<pre class="codewrap"><code>
+<span class="class">.wrapper</span> {
+  <span class="property">font-family</span>: <span class="font">'Roboto'</span>, <span class="value">sans-serif</span>;
+  <span class="property">max-width</span>: 48em;
+  <span class="property">margin-right</span>: auto;
+  <span class="property">margin-left</span>: auto;
+  <span class="property">padding-right</span>: 24px;
+  <span class="property">padding-left</span>: 24px;
+}
+
+<span class="id">#header</span>{
+  <span class="property">margin-top</span>: 20px;
+}
+
+<span class="id">#header</span> <span class="element">h1</span>{
+  <span class="property">margin</span>: 0;
+}
+
+<span class="id">#namebox</span>{
+  <span class="property">margin-left</span>: 20px;
+}
+
+<span class="id">#chatbox</span>{
+  <span class="property">width</span>: 500px;
+  <span class="property">height</span>: 400px;
+  <span class="property">background-color</span>: lightgrey;
+  <span class="property">padding-top</span>: 30px;
+  <span class="property">padding-bottom</span>: 30px;
+}
+
+<span class="id">#messageinput</span> <span class="element">p</span>{
+  <span class="property">display</span>: inline-block;
+  <span class="property">margin-right</span>: 20px;
+}
+
+
+<span class="id">#input</span>{
+  <span class="property">width</span>: 300px;
+}
+
+<span class="element">ul</span>{
+  <span class="property">list-style-type</span>: none;
+}
+<span class="element">button</span> {
+  <span class="property">font-size</span>: 1em;
+  <span class="property">margin-top</span>: 30px;
+  <span class="property">width</span>: 200px;
+  <span class="property">height</span>: 50px;
+  <span class="property">background-color</span>: #0da1d8;
+  <span class="property">border</span>: none;
+  <span class="property">color</span>: #ffffff;
+}
+	</code></pre>
+	<h3>Styling Overview</h3>
+	<p>It is important to keep the IDs that we assigned
+    and used in the javascript files, or your server and
+    client code will break.</p>
+
+  <p>In the html file we changed the position of some of
+    the elements and added a link to a google font style.
+    We also added a header id to the top header so we could
+    position it as a unit.</p>
+
+  <p>In the CSS file we added some styling to different sections
+    as you normally would with css. The most noteable features
+    are the background color or the <i>#chatbox</i> section and 
+    setting its width and height to a fixed size, so the box doesn't
+    change size as li elements are added during a chat.</p>
+
+  <p>Also, we set <i>ul</i> elements in the css to <i>list-style-type: none;</i>
+    so bullet points do not appear on the page. during typing.</p>
+
+  <p>Other than that, you can style this page as you normally would any other
+    html file. Enjoy!</p>
+
+			<section>
+				<h2>Testing Locally</h2>
+				<h3>Organizing Files</h3>
+  <p>In this section we will go over how to test your Server
+    and Client code to make sure your chat app is is
+    working properly.</p>
+
+  <p>Make sure you have your server.js, client.js, index.html,
+    node_modules folder, and package.json in the same folder.</p>
+
+  <img src="img/finder.png"></img>
+
+  <h3>Running your Servers</h3>
+
+  <p>You need to run two servers for you chat app. The WebSocket
+    server you wrote in this tutorial and an http server to host your
+    html file and it's contents.</p>
+
+  <p>In one window navigate navigate to the folder that contains
+    all of your files. once you are in that file, type <i>node server.js</i>
+    in the terminal and press enter.</p>
+
+  <img src="img/websocket.png">
+
+  <p>In the second terminal window type in <i>http-server</i> and press
+    enter. This runs an http server so you html file will be hosted.</p>
+
+  <img src="img/httpserver.png">
+
+  <h3>Opening in the Browser</h3>
+
+  <p>Go to your web browser. To see your site type in <i>localhost:8080</i> 
+    (http servers defalut to port 8080, when logging onto your http server
+    if you were to type <i>http-server -p1000</i> your server would be running
+    on port 1000 instead of 8080) Your basic html file should render. If you open
+    multiple browser windows ang go to <i>localhost:8080</i> you can chat between
+    browsers.</p>
+
+    <img src="img/browser.png">
+
+  <p>Congratulations! Your server is working locally! Make sure you exit both of terminal
+    servers by hitting <i>control C</i>. Now you can CSS style and add features to your chat
+    app. Add a function that renders photos? Emojis?</p>
+
+			</section>
+			<section>
+				<h2>Hosting on Digital Ocean</h2>
+				<ul>
+					<li>Put all of your server code and html/css/js for your browser-client code into one folder.</li>
+					<li>Be sure that your folder includes a package.json. If it doesn't you will have to:</li>
+					<li>Run npm init inside that folder</li>
+					<li>Run npm install ws --save inside that folder</li>
+					<li>Go through the necessary steps to turn this folder into a git repo and push it up to a Github.</li>
+					<li>Setup Digital Ocean box (droplets) link below
+        <a href="https://www.digitalocean.com/droplets">digitalocean.com/droplets</a></li>
+        <li>SSH to your Digital Ocean (DO) box: ssh root@[your-digitaloceanaddress]</li>
+        <li>In the terminal where you are ssh'd into your DO box git clone the https link
+        from your Github repo. This automatically creates a folder for your repo, so you dont need
+        to make a folder for your code beforehand.
+        cd into your repo's folder
+        run npm install</li>
+				</ul>
+				<h3>Starting your server</h3>
+    <p>Now that you have a clone of your repo on your DO box, this is what you will have to do every time you want to start up your server.</p>
+    <ul>
+    	<li>SSH to your DO box if you haven't already</li>
+    	<li>cd into the folder for your app (git clone initially made this).</li>
+    	<li>run git pull origin master in order to pull down the latest code from Github</li>
+    	<li>run npm install (this probably doesn't need to be done every time, but just in case you changed anything in the package.json you can do this step again)
+      run your chat app server code (e.g. node server.js). This will turn your DO box into a websocket server running on port 3000</li>
+      <li>Open up another terminal. SSH to DO. cd into the folder for your app.</li>
+      <li>run http-server. This will turn your DO box into a http server to serve up your html/css/js files.</li>
+      <li>Running http-server will require browsers to access your app through the address http://[your-digitaloceanaddress]</li>
+      <li>Running http-server -p80 will allow browsers to access your app through the address http://[your-digitaloceanaddress] (leaving off the port number at the end)</li>
+    </ul>
+			</section>
+
+      <section>
+        <h3>Glossary</h3>
+        <p>
+       
+  
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for_each...in">forEach</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push">push</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget.addEventListener">addEventListener</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/document.getElementById">getElementById</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf">indexOf</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice">splice</a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length">length</a>
+
+      </p>
+    </section>
+
+		</div>
+		<footer>&nbsp</footer>
+		<script type="text/javascript" src="js/script.js"></script>
+	</body>
+</html>
